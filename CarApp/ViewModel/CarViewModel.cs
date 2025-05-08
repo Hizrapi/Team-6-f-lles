@@ -1,22 +1,25 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Input;
 using CarApp.Model;
+using System;
 using CarApp.Utilities;
 
 namespace CarApp.ViewModel
 {
     public class CarViewModel : INotifyPropertyChanged
     {
-        private readonly ICarRepository _repository;
         private string licensePlate;
         private string model;
         private Car selectedCar;
+        private Trip selectedTrip;
+        private DateTime startDate = DateTime.Now;
+        private DateTime endDate = DateTime.Now;
+        private double distance;
 
         public ObservableCollection<Car> Cars { get; set; }
-        public ICommand AddCarCommand { get; }
-        public ICommand EditCarCommand { get; }
-        public ICommand DeleteCarCommand { get; }
+        public ObservableCollection<Trip> Trips { get; set; }
 
         public string LicensePlate
         {
@@ -33,82 +36,113 @@ namespace CarApp.ViewModel
         public Car SelectedCar
         {
             get => selectedCar;
-            set
-            {
-                selectedCar = value;
-                if (selectedCar != null)
-                {
-                    LicensePlate = selectedCar.LicensePlate;
-                    Model = selectedCar.Model;
-                }
-                OnPropertyChanged(nameof(SelectedCar));
-            }
+            set { selectedCar = value; OnPropertyChanged(nameof(SelectedCar)); LoadTrips(); }
         }
+
+        public Trip SelectedTrip
+        {
+            get => selectedTrip;
+            set { selectedTrip = value; OnPropertyChanged(nameof(SelectedTrip)); }
+        }
+
+        public DateTime StartDate
+        {
+            get => startDate;
+            set { startDate = value; OnPropertyChanged(nameof(StartDate)); }
+        }
+
+        public DateTime EndDate
+        {
+            get => endDate;
+            set { endDate = value; OnPropertyChanged(nameof(EndDate)); }
+        }
+
+        public double Distance
+        {
+            get => distance;
+            set { distance = value; OnPropertyChanged(nameof(Distance)); }
+        }
+
+        public ICommand AddCarCommand { get; }
+        public ICommand EditCarCommand { get; }
+        public ICommand DeleteCarCommand { get; }
+        public ICommand AddTripCommand { get; }
+        public ICommand EditTripCommand { get; }
+        public ICommand DeleteTripCommand { get; }
 
         public CarViewModel()
         {
-            _repository = new FileCarRepository();
-            Cars = new ObservableCollection<Car>(_repository.GetAllCars());
+            Cars = new ObservableCollection<Car>();
+            Trips = new ObservableCollection<Trip>();
+
             AddCarCommand = new RelayCommand(AddCar);
-            EditCarCommand = new RelayCommand(EditCar, () => SelectedCar != null);
-            DeleteCarCommand = new RelayCommand(DeleteCar, () => SelectedCar != null);
+            EditCarCommand = new RelayCommand(EditCar);
+            DeleteCarCommand = new RelayCommand(DeleteCar);
+            AddTripCommand = new RelayCommand(AddTrip);
+            EditTripCommand = new RelayCommand(EditTrip);
+            DeleteTripCommand = new RelayCommand(DeleteTrip);
         }
 
         private void AddCar()
         {
-            var newCar = new Car { LicensePlate = LicensePlate, Model = Model };
-            _repository.AddCar(newCar);
-            Cars.Add(newCar);
-            ClearFields();
+            if (string.IsNullOrWhiteSpace(LicensePlate) || string.IsNullOrWhiteSpace(Model)) return;
+
+            Cars.Add(new Car { LicensePlate = LicensePlate, Model = Model });
+            LicensePlate = string.Empty;
+            Model = string.Empty;
         }
 
         private void EditCar()
         {
             if (SelectedCar == null) return;
-
-            // Find den eksisterende bil i listen
-            var existingCar = Cars.FirstOrDefault(c => c.LicensePlate == SelectedCar.LicensePlate);
-            if (existingCar != null)
-            {
-                existingCar.LicensePlate = LicensePlate;
-                existingCar.Model = Model;
-
-                // Opdaterer i filen
-                _repository.UpdateCar(existingCar);
-
-                // Opdaterer listen (forcerer UI opdatering)
-                int index = Cars.IndexOf(existingCar);
-                Cars[index] = new Car { LicensePlate = existingCar.LicensePlate, Model = existingCar.Model };
-                OnPropertyChanged(nameof(Cars));
-            }
-
-            // Rydder inputfelterne
-            LicensePlate = string.Empty;
-            Model = string.Empty;
-            SelectedCar = null;
+            SelectedCar.LicensePlate = LicensePlate;
+            SelectedCar.Model = Model;
         }
-
 
         private void DeleteCar()
         {
             if (SelectedCar == null) return;
-            _repository.DeleteCar(SelectedCar.LicensePlate);
             Cars.Remove(SelectedCar);
-            ClearFields();
+            Trips.Clear();
         }
 
-        private void RefreshCars()
+        private void AddTrip()
         {
-            Cars.Clear();
-            foreach (var car in _repository.GetAllCars())
-                Cars.Add(car);
+            if (SelectedCar == null) return;
+            Trips.Add(new Trip
+            {
+                CarRegNr = SelectedCar.LicensePlate,
+                StartDate = StartDate,
+                EndDate = EndDate,
+                Distance = Distance
+            });
+            StartDate = DateTime.Now;
+            EndDate = DateTime.Now;
+            Distance = 0;
         }
 
-        private void ClearFields()
+        private void EditTrip()
         {
-            LicensePlate = string.Empty;
-            Model = string.Empty;
-            SelectedCar = null;
+            if (SelectedTrip == null) return;
+            SelectedTrip.StartDate = StartDate;
+            SelectedTrip.EndDate = EndDate;
+            SelectedTrip.Distance = Distance;
+        }
+
+        private void DeleteTrip()
+        {
+            if (SelectedTrip == null) return;
+            Trips.Remove(SelectedTrip);
+        }
+
+        private void LoadTrips()
+        {
+            Trips.Clear();
+            if (SelectedCar == null) return;
+
+            // Eksempel: Her kunne du hente trips fra en database eller fil
+            Trips.Add(new Trip { CarRegNr = SelectedCar.LicensePlate, StartDate = DateTime.Now.AddHours(-2), EndDate = DateTime.Now, Distance = 50 });
+            Trips.Add(new Trip { CarRegNr = SelectedCar.LicensePlate, StartDate = DateTime.Now.AddHours(-5), EndDate = DateTime.Now.AddHours(-3), Distance = 100 });
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

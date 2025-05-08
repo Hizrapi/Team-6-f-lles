@@ -1,44 +1,34 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace CarApp.ViewModel
+namespace CarApp.Helpers
 {
     public class RelayCommand : ICommand
     {
-        // Action er en delegeret (= en metode uden returværdi).
-        // 'execute' peger på den metode der skal køres, når brugeren trykker på knappen.
-        private readonly Action execute;
+        private readonly Action _execute;
+        private readonly Func<bool> _canExecute;
 
-        // Func<bool> er en delegeret der returnerer true/false.
-        // 'canExecute' bruges til at afgøre om knappen overhovedet må kunne klikkes på.
-        private readonly Func<bool> canExecute;
+        public event EventHandler CanExecuteChanged;
 
-        // Constructor: her får vi de to metoder ind som parametre.
         public RelayCommand(Action execute, Func<bool> canExecute = null)
         {
-            this.execute = execute;               // sætter hvilken handling der skal ske
-            this.canExecute = canExecute;         // sætter betingelsen for om knappen må aktiveres
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
         }
 
-        // Dette event er nødvendigt for WPF – det fortæller, at vi gerne vil have knappen genvurderet.
-        // Det sker fx automatisk når tekstfelter ændres.
-        public event EventHandler CanExecuteChanged
+        public bool CanExecute(object parameter)
         {
-            add { CommandManager.RequerySuggested += value; }   // standard WPF-mekanisme
-            remove { CommandManager.RequerySuggested -= value; }
+            return _canExecute == null || _canExecute();
         }
 
-        // Bestemmer om kommandoen må køres lige nu.
-        // Hvis der ikke er nogen 'canExecute', så siger vi bare 'ja'.
-        public bool CanExecute(object parameter) =>
-            canExecute == null || canExecute();
+        public void Execute(object parameter)
+        {
+            _execute();
+        }
 
-        // Når kommandoen køres (knappen trykkes), så udfør 'execute'.
-        public void Execute(object parameter) =>
-            execute();
+        public void RaiseCanExecuteChanged()
+        {
+            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 }
