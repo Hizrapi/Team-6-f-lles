@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using CarApp.Model;
 
 namespace CarApp.ViewModel
 {
@@ -10,14 +10,21 @@ namespace CarApp.ViewModel
     {
         private readonly string filePath = "cars.txt";
 
-        public List<Car> GetAllCars()
+        public IEnumerable<Car> GetAllCars()
         {
             if (!File.Exists(filePath))
                 return new List<Car>();
 
-            return File.ReadAllLines(filePath).Select(Car.FromString).ToList();
+            return File.ReadAllLines(filePath)
+                       .Select(line =>
+                       {
+                           var parts = line.Split(',');
+                           return new Car { LicensePlate = parts[0], Model = parts[1] };
+                       })
+                       .ToList();
         }
 
+        // ✅ Tilføj GetCar metoden
         public Car GetCar(string licensePlate)
         {
             return GetAllCars().FirstOrDefault(c => c.LicensePlate == licensePlate);
@@ -25,30 +32,31 @@ namespace CarApp.ViewModel
 
         public void AddCar(Car car)
         {
-            File.AppendAllText(filePath, car + Environment.NewLine);
+            File.AppendAllText(filePath, $"{car.LicensePlate},{car.Model}{Environment.NewLine}");
         }
 
         public void UpdateCar(Car car)
         {
-            var cars = GetAllCars();
-            var index = cars.FindIndex(c => c.LicensePlate == car.LicensePlate);
-            if (index >= 0)
+            var cars = GetAllCars().ToList();
+            var existingCar = cars.FirstOrDefault(c => c.LicensePlate == car.LicensePlate);
+            if (existingCar != null)
             {
-                cars[index] = car;
+                existingCar.LicensePlate = car.LicensePlate;
+                existingCar.Model = car.Model;
                 SaveAllCars(cars);
             }
+            
         }
 
-        public void DeleteCar(String licensePlate)
+        public void DeleteCar(string licensePlate)
         {
             var cars = GetAllCars().Where(c => c.LicensePlate != licensePlate).ToList();
             SaveAllCars(cars);
         }
 
-        private void SaveAllCars(List<Car> cars)
+        private void SaveAllCars(IEnumerable<Car> cars)
         {
-            File.WriteAllLines(filePath, cars.Select(c => c.ToString()));
+            File.WriteAllLines(filePath, cars.Select(c => $"{c.LicensePlate},{c.Model}"));
         }
-
     }
 }

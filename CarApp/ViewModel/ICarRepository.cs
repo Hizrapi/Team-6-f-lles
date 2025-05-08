@@ -1,18 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using CarApp.Model;
 
 namespace CarApp.ViewModel
 {
     public interface ICarRepository
     {
-        List<Car> GetAllCars();
-        Car? GetCar(string licensePlate);
+        IEnumerable<Car> GetAllCars();
+        Car GetCar(string licensePlate);
         void AddCar(Car car);
         void UpdateCar(Car car);
-        void DeleteCar(String LicePlate);
-
+        void DeleteCar(string licensePlate);
     }
 }
+
